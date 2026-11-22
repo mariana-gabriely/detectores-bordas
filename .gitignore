@@ -1,0 +1,18 @@
+# Ambientes virtuais
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Saídas geradas pelo script
+resultados/
+
+# Configurações locais de editores e sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
