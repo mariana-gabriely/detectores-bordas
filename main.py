@@ -6,7 +6,7 @@ from pathlib import Path
 PASTA_RESULTADOS = Path("resultados")
 PASTA_RESULTADOS.mkdir(exist_ok=True)
 
-# Leitura em escala de cinza (1 canal)
+# Leitura da imagem em tons de cinza.
 img = cv2.imread("image.jpg", cv2.IMREAD_GRAYSCALE)
 
 def normalizar(matriz):
@@ -23,16 +23,13 @@ def criar_grade(imagens, titulos):
     fig.tight_layout()
     return fig
 
-# Gradientes. A saída em CV_64F mantém os valores negativos das derivadas;
-# com saída uint8 eles seriam cortados em 0 e metade das bordas se perderia.
-
-# Sobel: kernel com pesos 1, 2, 1 (maior peso na linha/coluna central)
-sobel_x = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=3)
-sobel_y = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=3)
+# Cálculo dos gradientes Sobel.
+# CV_64F preserva os valores negativos das derivadas.
+sobel_x = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=3) # verticais
+sobel_y = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=3) # horizontais
 mag_sobel = np.hypot(sobel_x, sobel_y)  # sqrt(Gx² + Gy²)
 
-# Prewitt: pesos uniformes 1, 1, 1. O OpenCV não tem função pronta,
-# então o kernel é aplicado com filter2D.
+# Cálculo dos gradientes Prewitt.
 kernel_prewitt_x = np.array([[-1, 0, 1],
                              [-1, 0, 1],
                              [-1, 0, 1]], dtype=np.float64)
@@ -41,25 +38,25 @@ prewitt_x = cv2.filter2D(img, cv2.CV_64F, kernel_prewitt_x)
 prewitt_y = cv2.filter2D(img, cv2.CV_64F, kernel_prewitt_y)
 mag_prewitt = np.hypot(prewitt_x, prewitt_y)
 
-# Scharr: pesos 3, 10, 3, com resposta mais uniforme em bordas diagonais
+# Cálculo dos gradientes Scharr.
 scharr_x = cv2.Scharr(img, cv2.CV_64F, 1, 0)
 scharr_y = cv2.Scharr(img, cv2.CV_64F, 0, 1)
 mag_scharr = np.hypot(scharr_x, scharr_y)
 
-# Passos intermediários do Sobel: bordas verticais (Gx), horizontais (Gy) e magnitude
+# Visualização dos componentes X e Y e da magnitude Sobel.
 fig_passos = criar_grade(
     [img, normalizar(np.abs(sobel_x)), normalizar(np.abs(sobel_y)), normalizar(mag_sobel)],
     ["Original", "Gradiente X (|Gx|)", "Gradiente Y (|Gy|)", "Magnitude (Sobel)"],
 )
 
-# Comparação entre os três operadores
+# Comparação entre Prewitt, Sobel e Scharr.
 fig_operadores = criar_grade(
     [img, normalizar(mag_prewitt), normalizar(mag_sobel), normalizar(mag_scharr)],
     ["Original", "Prewitt", "Sobel", "Scharr"],
 )
 
-# Efeito do tamanho do kernel no Sobel
-tamanhos = (3, 5, 7)
+# Comparação de diferentes tamanhos do kernel Sobel.
+tamanhos = (3, 9, 15)
 sobel_ksize = [
     normalizar(np.hypot(cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=k),
                         cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=k)))
@@ -67,20 +64,25 @@ sobel_ksize = [
 ]
 fig_ksize = criar_grade(sobel_ksize, [f"Sobel ksize={k}" for k in tamanhos])
 
-# Efeito do limiar na binarização da magnitude do Sobel
+# Comparação de diferentes limiares aplicados à magnitude Sobel.
 limiares = (30, 80, 150)
 base = normalizar(mag_sobel)
 binarizadas = [cv2.threshold(base, t, 255, cv2.THRESH_BINARY)[1] for t in limiares]
 fig_limiar = criar_grade(binarizadas, [f"Limiar T={t}" for t in limiares])
 
-# Salva as figuras no final
+# Salvamento das figuras na pasta de resultados.
 resultados = {
     "resultado_passos_sobel.png": fig_passos,
     "resultado_comparacao_operadores.png": fig_operadores,
     "resultado_ksize.png": fig_ksize,
     "resultado_limiar.png": fig_limiar,
 }
-for nome, fig in resultados.items():
-    fig.savefig(PASTA_RESULTADOS / nome, dpi=150)
-    plt.close(fig)
-print(f"Resultados salvos em: {PASTA_RESULTADOS.resolve()}")
+
+for nome, figura in resultados.items():
+    figura.savefig(
+        PASTA_RESULTADOS / nome,
+        dpi=150,
+        bbox_inches="tight",
+        pad_inches=0.2,
+    )
+    plt.close(figura)
